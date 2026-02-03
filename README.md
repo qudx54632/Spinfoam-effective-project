@@ -55,8 +55,8 @@ All Julia dependencies are specified in Manifest.toml.
 
 Clone the repository:
 
-git clone https://github.com/qudx54632/Spinfoam-effective-project.git  
-cd Spinfoam-effective-project
+    git clone https://github.com/qudx54632/Spinfoam-effective-project.git  
+    cd Spinfoam-effective-project
 
 (Optional) install the Jupyter kernel:
 
@@ -158,7 +158,6 @@ Add the Lorentzian simplex solver to the load path:
 Load the solver and execute the Hessian script:
 
     using LorentzianSimplexSolver
-    
     include("src/hessian/run_hessian.jl")
 
 Once the script finishes, the computed Hessian matrix will be automatically
