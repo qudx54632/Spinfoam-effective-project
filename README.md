@@ -158,6 +158,7 @@ Add the Lorentzian simplex solver to the load path:
 Load the solver and execute the Hessian script:
 
     using LorentzianSimplexSolver
+    
     include("src/hessian/run_hessian.jl")
 
 Once the script finishes, the computed Hessian matrix will be automatically
