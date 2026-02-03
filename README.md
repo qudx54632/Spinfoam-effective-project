@@ -149,12 +149,13 @@ vertices and simplices.
 
 After making these changes, run the Hessian computation in Julia as follows:
 
-1. Start Julia in the project root directory.
-2. Add the Lorentzian simplex solver to the load path:
+Start Julia in the project root directory.
+
+Add the Lorentzian simplex solver to the load path:
 
     push!(LOAD_PATH, joinpath(pwd(), "src/LorentzianSimplexSolver", "src"))
 
-3.	Load the solver and execute the Hessian script:
+Load the solver and execute the Hessian script:
 
     using LorentzianSimplexSolver
     include("src/hessian/run_hessian.jl")
