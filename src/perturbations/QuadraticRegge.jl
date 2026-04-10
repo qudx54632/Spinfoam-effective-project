@@ -67,7 +67,8 @@ function dθdl_single_pp(simplex_edges,
                      tetb_edges,
                      ah_edges,
                      hbar_idx, l_var::Num,
-                     lsq_vals_dict)
+                     lsq_vals_dict,
+                     ::Type{T}) where {T<:Real}
 
     # Volumes
     Vsigma = V4sq_symbolic(simplex_edges...)
@@ -89,11 +90,11 @@ function dθdl_single_pp(simplex_edges,
 
     z = (term1 + sqrt(term1^2 - term2 * term3)) /
         (sqrt(term2) * sqrt(term3))
-    z_val = eval(Symbolics.toexpr(substitute(z, lsq_vals_dict)))
+    z_val = T(Symbolics.value(substitute(z, lsq_vals_dict)))
 
     dz_dlsq = Symbolics.derivative(z, l_var)
-    l_val = sqrt(lsq_vals_dict[l_var])
-    dz_dl = eval(Symbolics.toexpr(substitute(dz_dlsq, lsq_vals_dict) * (2 * l_val)))
+    l_val = T(sqrt(lsq_vals_dict[l_var]))
+    dz_dl = T(Symbolics.toexpr(substitute(dz_dlsq, lsq_vals_dict) * (2 * l_val)))
 
     return - dz_dl/z_val
 end
@@ -135,13 +136,13 @@ function compute_dθDl(
     bulk_edges,
     vertex_coords,
     tets_per_simplex,
-    minkowski_norm2
-)
+    minkowski_norm2, ::Type{T}
+) where {T<:Real}
 
     nh = length(j_h_vertices)
     nb = length(bulk_edges)
 
-    DθDl = zeros(ComplexF64, nh, nb)
+    DθDl = zeros(Complex{T}, nh, nb)
     
     @variables lsq[1:nb]
     lsq_vec = collect(lsq)
@@ -189,7 +190,7 @@ function compute_dθDl(
         ]
 
         for b in 1:nb
-            DθDl[h,b] += dθdl_single_pp(ls_simplex, ls_tetA, ls_tetB, ls_face, idx.hbar_idx, lsq_vec[b], lh_vals)
+            DθDl[h,b] += dθdl_single_pp(ls_simplex, ls_tetA, ls_tetB, ls_face, idx.hbar_idx, lsq_vec[b], lh_vals, T)
         end
     end
 

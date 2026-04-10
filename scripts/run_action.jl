@@ -16,13 +16,7 @@ function run_action(geom_base, γ)
     S_base =
         LorentzianSimplexSolver.DefineAction.compute_action(geom_base)
 
-    S_base_fn, labels_base =
-        LorentzianSimplexSolver.SymbolicToJulia.build_action_function(S_base, sd_base)
-
-    args_base =
-        LorentzianSimplexSolver.SymbolicToJulia.build_argument_vector(sd_base, labels_base, γ)
-
-    return sd_base, S_base_fn, args_base, labels_base
+    return sd_base, S_base
 end
 
 end # module RunAction

@@ -1,9 +1,8 @@
 module RunDlogEhDG
 
-export run_dlogEh_dg
+export run_dlogEh_dg, evaluate_dlogEh_dg
 
-using PythonCall
-using Symbolics
+using SymEngine
 using LorentzianSimplexSolver
 
 # ------------------------------------------------------------
@@ -13,12 +12,11 @@ function log_Eh(
     gvariablesall, zvariablesall, bdyxikappafa,
     OrderBulkFaces, metaxikappaf,
     kappa, sgndet, tetareasign;
-    γ::Py = LorentzianSimplexSolver.DefineAction.γsym()
+    γ = LorentzianSimplexSolver.DefineAction.γsym()
 )
-    sp = LorentzianSimplexSolver.DefineAction._sympy()
-    safe_log = sp.log
+    safe_log = SymEngine.log
 
-    BDActions = Vector{Py}(undef, length(OrderBulkFaces))
+    BDActions = Vector{Basic}(undef, length(OrderBulkFaces))
 
     for idx in eachindex(OrderBulkFaces)
         faces = OrderBulkFaces[idx]
@@ -69,14 +67,11 @@ function log_Eh(
     return BDActions
 end
 
-function compute_dlogEh_dg(S::Py, g_vars::Vector{Py})
-    sp = LorentzianSimplexSolver.DefineAction._sympy()
-    dS = Dict{Py,Py}()
-
+function compute_dlogEh_dg(S::Basic, g_vars::Vector{Basic})
+    dS = Dict{Basic,Basic}()
     for v in g_vars
-        dS[v] = sp.diff(S, v)
+        dS[v] = SymEngine.diff(S, v)
     end
-
     return dS
 end
 
@@ -84,7 +79,7 @@ end
 # 2. Main driver: ∂ log E_h / ∂ g_α
 # ------------------------------------------------------------
 
-function run_dlogEh_dg(geom_base, sd_base)
+function run_dlogEh_dg(geom_base)
     # --- unpack geometry ---
     xi_mat = geom_base.varias[:xi_mat]
     z_mat  = geom_base.varias[:z_mat]
@@ -104,15 +99,41 @@ function run_dlogEh_dg(geom_base, sd_base)
     # --- background solution ---
     g_vars = geom_base.varias[:g_var]
 
-    dlogEh_dg_py = [compute_dlogEh_dg(S, g_vars) for S in logEh_list];
+    dlogEh_dg_sym = [compute_dlogEh_dg(S, g_vars) for S in logEh_list]
 
-    # --- build gradient functions ---
-    dlogEh_dg_func = [
-        LorentzianSimplexSolver.SymbolicToJulia.build_gradient_functions(S, sd_base)
-        for S in dlogEh_dg_py
-    ]
+    return dlogEh_dg_sym
+end
 
-    return dlogEh_dg_func
+function evaluate_dlogEh_dg(dlogEh_dg_sym, geom_base, sd_base::LorentzianSimplexSolver.SolveVars.SolveData{T}; γval=nothing) where {T<:Real}
+
+    γsym = LorentzianSimplexSolver.DefineAction.γsym()
+
+    vals = LorentzianSimplexSolver.ActionEvaluation.build_value_dict(
+        sd_base, γsym; γval=γval
+    )
+
+    g_vars = geom_base.varias[:g_var]
+
+    nh = length(dlogEh_dg_sym)
+    ng = length(g_vars)
+
+    dlogEh_dg_vals = Matrix{Complex{T}}(undef, nh, ng)
+
+    for h in 1:nh
+        for (i, v) in enumerate(g_vars)
+
+            val_sym = LorentzianSimplexSolver.ActionEvaluation.eval_symbolic(
+                dlogEh_dg_sym[h][v], vals
+            )
+
+            dlogEh_dg_vals[h,i] =  Complex{T}(
+                T(N(real(val_sym))),
+                T(N(imag(val_sym)))
+            )
+        end
+    end
+
+    return dlogEh_dg_vals
 end
 
 end # module

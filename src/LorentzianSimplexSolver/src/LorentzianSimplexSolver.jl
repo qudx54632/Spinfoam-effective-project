@@ -20,7 +20,7 @@ include("geometry/TetraNormals.jl")                # tetrahedron normals
 include("geometry/DihedralAngles.jl")              # dihedral angles
 include("algebra/LorentzGroup.jl")                 # SO(1,3), SL(2,C) actions
 include("geometry/ThreeDTetra.jl")                 # intrinsic 3D tetra geometry
-include("geometry/volume.jl")                      # volumes
+include("geometry/Volume.jl")                      # volumes
 
 # ---------------- bivectors and group data ----------------
 include("algebra/Su2Su11FromBivector.jl")           # SU(2)/SU(1,1) from bivectors
@@ -44,24 +44,23 @@ include("pipeline/GaugeFixing.jl")                 # gauge fixing
 include("action/CriticalPoints.jl")                # critical point data
 include("action/DefineSymbols.jl")                  # Symbolics variables
 include("action/DefineAction.jl")                   # spinfoam action
-include("action/SolveVars.jl")                      # solve critical equations
-include("action/SymbolicToJulia.jl")                # Symbolics → Julia
+include("action/SolveVars.jl")                     # solve critical equations
+include("action/ActionEvaluation.jl")             # evaluate action at critical points      
 include("action/EOMsHessian.jl")                    # EOMs and Hessian
 include("action/ReggeAction.jl")                    # Regge action
-include("utils/OrientationSelector.jl")             # Select the orientation of action at critical points
 
-# ---------------- public API ----------------
-export
-    GeometryDataset,
-    GeometryCollection,
-    run_geometry_pipeline,
-    fix_kappa_signs!,
-    run_face_xi_matching,
-    run_define_variables,
-    compute_action,
-    run_solver,
-    compute_EOMs,
-    compute_Hessian,
-    compute_bdy_critical_data
+# # ---------------- public API ----------------
+# export
+#     GeometryDataset,
+#     GeometryCollection,
+#     run_geometry_pipeline,
+#     fix_kappa_signs!,
+#     run_face_xi_matching,
+#     run_define_variables,
+#     compute_action,
+#     run_solver,
+#     compute_EOMs,
+#     compute_Hessian,
+#     compute_bdy_critical_data
 
 end

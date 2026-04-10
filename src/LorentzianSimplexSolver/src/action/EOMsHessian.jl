@@ -1,103 +1,79 @@
 module EOMsHessian
 
-using PythonCall
+using SymEngine
 using ..SolveVars: SolveData
 using ..PrecisionUtils: get_tolerance
-using ..SymbolicToJulia: build_argument_vector
+using ..ActionEvaluation: build_value_dict, eval_symbolic
 
+export compute_EOMs,
+       compute_Hessian,
+       check_EOMs,
+       evaluate_hessian,
+       evaluate_hessian_from_dS
 
-export compute_EOMs, compute_Hessian, check_EOMs, evaluate_hessian
-
-const _sympy_ref = Ref{Union{Py,Nothing}}(nothing)
-
-@inline function _sympy()
-    s = _sympy_ref[]
-    if s === nothing
-        s = pyimport("sympy")
-        _sympy_ref[] = s
-    end
-    return s
-end
 # ============================================================
 # Equations of motion
-#
-# Input:
-#   S  :: Py                 (SymPy expression)
-#   sd :: SolveVars.SolveData
-#
-# Output:
-#   Dict{Py,Py}   v ↦ ∂S/∂v
 # ============================================================
-function compute_EOMs(S::Py, sd::SolveData)
-    sp = _sympy()
-    dS = Dict{Py,Py}()
+function compute_EOMs(S::Basic, sd::SolveData)
+    dS = Dict{Basic,Basic}()
 
     for v in sd.labels_vars
-        dS[v] = sp.diff(S, v)
+        dS[v] = SymEngine.diff(S, v)
     end
 
     return dS
 end
 
-
 # ============================================================
 # Hessian
-#
-# Input:
-#   S  :: Py
-#   sd :: SolveVars.SolveData
-#
-# Output:
-#   Dict{Tuple{Py,Py},Py}   (v,w) ↦ ∂²S/∂v∂w
 # ============================================================
-function compute_Hessian(S::Py, sd::SolveData)
-    sp = _sympy()
-    vars = sd.labels_vars
-    H = Dict{Tuple{Py,Py},Py}()
+function compute_Hessian_block(S::Basic, vars)
+    n = length(vars)
+    dS = Vector{Basic}(undef, n)
 
-    for v1 in vars
-        dS_v1 = sp.diff(S, v1)
-        for v2 in vars
-            H[(v1, v2)] = sp.diff(dS_v1, v2)
+    for i in 1:n
+        dS[i] = SymEngine.diff(S, vars[i])
+    end
+
+    H = Matrix{Basic}(undef, n, n)
+
+    for i in 1:n
+        H[i, i] = SymEngine.diff(dS[i], vars[i])
+        for j in i+1:n
+            hij = SymEngine.diff(dS[i], vars[j])
+            H[i, j] = hij
+            H[j, i] = hij
         end
     end
 
     return H
 end
 
-# ------------------------------------------------------------
-# Evaluate all gradient functions at γ = 1 and check EOMs
-# ------------------------------------------------------------
-function check_EOMs(grad_fns::Dict{Py,Function}, sd::SolveData; γ = 1)
-    sp = _sympy()
+# ============================================================
+# Evaluate EOMs numerically
+# ============================================================
+function check_EOMs(dS::Dict{Basic,Basic}, sd::SolveData; γ=1)
+
     tol = get_tolerance()
+    γsym = symbols("gamma")
+
+    vals = build_value_dict(sd, γsym; γval=γ)
+
     all_zero = true
-    args = build_argument_vector(sd, vcat(sd.labels_vars, sd.labels_bdry), γ)
 
-    for (v, dS_fn) in grad_fns
+    for (v, expr) in dS
+        val_sym = eval_symbolic(expr, vals)
 
-        val = dS_fn(args...)
+        # convert to numeric
+        val = complex(Float64(N(real(val_sym))),
+                      Float64(N(imag(val_sym))))
 
-        # ----------------------------------------------------
-        # Extract real / imaginary parts
-        # ----------------------------------------------------
-        if val isa Real
-            re_val = abs(val)
-            im_val = 0.0
+        re_val = abs(real(val))
+        im_val = abs(imag(val))
 
-        elseif val isa Complex
-            re_val = abs(real(val))
-            im_val = abs(imag(val))
-        else
-            error("Unsupported value type: $(typeof(val))")
-        end
-
-        # ----------------------------------------------------
-        # Threshold test
-        # ----------------------------------------------------
         if re_val > tol || im_val > tol
-            println("✘ dS/d$(sp.sstr(v)) ≠ 0")
-            println("    |Re| = $re_val, |Im| = $im_val")
+            println("✘ dS/d$(v) ≠ 0")
+            println("|Re| = $re_val, |Im| = $im_val")
             all_zero = false
         end
     end
@@ -111,50 +87,106 @@ function check_EOMs(grad_fns::Dict{Py,Function}, sd::SolveData; γ = 1)
     return nothing
 end
 
+# ============================================================
+# Evaluate a precomputed symbolic Hessian block
+# ============================================================
+function evaluate_hessian_block(Hsym::Matrix{Basic},
+                                sd::SolveData{T};
+                                γ = one(T)) where {T<:Real}
 
-function evaluate_hessian(hess_fns::Dict{Tuple{Py,Py}, Function},
-                          sd::SolveData{T};
-                          γ = one(T)) where {T<:Real}
-    sp = _sympy()
-    # Hessian is only over variables used in differentiation
-    labels = sd.labels_vars
-    n = length(labels)
+    γsym = symbols("gamma")
+    vals = build_value_dict(sd, γsym; γval=γ)
 
-    # symbol -> index (vars only)
-    index = Dict(pyconvert(String, sp.sstr(v)) => i
-                 for (i, v) in enumerate(labels))
-
-    # allocate
+    n = size(Hsym, 1)
     H = Matrix{Complex{T}}(undef, n, n)
-    fill!(H, zero(Complex{T}))
 
-    # NOTE: your generated functions expect (vars..., bdry..., gamma)
-    # so argument vector must still include BOTH vars and bdry.
-    full_labels = vcat(sd.labels_vars, sd.labels_bdry)
-    args = build_argument_vector(sd, full_labels, γ)
+    for j in 1:n
+        for i in 1:j
+            val_sym = eval_symbolic(Hsym[i, j], vals)
 
-    # loop upper triangle only
-    for ((v1, v2), h_fn) in hess_fns
-        i = index[pyconvert(String, sp.sstr(v1))]
-        j = index[pyconvert(String, sp.sstr(v2))]
-        j < i && continue
+            re = T(N(real(val_sym)))
+            im = T(N(imag(val_sym)))
+            val = complex(re, im)
 
-        val = h_fn(args...)
-
-        hij = if val isa Real
-            Complex{T}(T(val), zero(T))
-        elseif val isa Complex
-            Complex{T}(T(real(val)), T(imag(val)))
-        else
-            error("Unsupported Hessian entry type: $(typeof(val))")
+            H[i, j] = val
+            H[j, i] = val
         end
-
-        H[i, j] = hij
-        H[j, i] = hij
     end
 
-    return H, labels
+    return H
 end
 
+# ============================================================
+# Evaluate Hessian from precomputed first derivatives
+# ============================================================
+function evaluate_hessian_from_dS(
+    dS_precomp::Vector{Basic},
+    vars::Vector{Basic},
+    sd::SolveData{T};
+    γ = one(T)
+) where {T<:Real}
+
+    γsym = symbols("gamma")
+    vals = build_value_dict(sd, γsym; γval=γ)
+
+    n = length(vars)
+    H = Matrix{Complex{T}}(undef, n, n)
+
+    for j in 1:n
+        for i in 1:j
+            hij_sym = SymEngine.diff(dS_precomp[i], vars[j])
+
+            val_sym = eval_symbolic(hij_sym, vals)
+
+            re_part = T(N(real(val_sym)))
+            im_part = T(N(imag(val_sym)))
+
+            val = complex(re_part, im_part)
+
+            H[i, j] = val
+            H[j, i] = val
+        end
+    end
+
+    return H
+end
+
+# ============================================================
+# No symbolic Hessian storage:
+# differentiate and evaluate on demand
+# ============================================================
+function evaluate_hessian_ondemand(S::Basic,
+                                   vars,
+                                   sd::SolveData{T};
+                                   γ = one(T)) where {T<:Real}
+
+    γsym = symbols("gamma")
+    vals = build_value_dict(sd, γsym; γval=γ)
+
+    n = length(vars)
+    H = Matrix{Complex{T}}(undef, n, n)
+
+    # first derivatives once
+    dS = Vector{Basic}(undef, n)
+    for i in 1:n
+        dS[i] = SymEngine.diff(S, vars[i])
+    end
+
+    for j in 1:n
+        for i in 1:j
+            hij_sym = SymEngine.diff(dS[i], vars[j])
+            val_sym = eval_symbolic(hij_sym, vals)
+
+            re = T(N(real(val_sym)))
+            im = T(N(imag(val_sym)))
+            val = complex(re, im)
+
+            H[i, j] = val
+            H[j, i] = val
+        end
+    end
+
+    return H
+end
 
 end # module
