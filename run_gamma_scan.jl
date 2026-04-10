@@ -65,7 +65,7 @@ simplices = [
     [1, 2, 4, 11, 15], [1, 12, 14, 15, 16], [2, 12, 13, 15, 16], [1, 2, 12, 15, 16],
     [3, 12, 13, 14, 16], [1, 3, 12, 14, 16], [2, 3, 12, 13, 16], [1, 2, 3, 12, 16]
 ]
-# simplices = [[1,2,3,4,6],[1,2,3,5,6],[1,2,4,5,6],[1,3,4,5,6],[2,3,4,5,6]]
+#simplices = [[1,2,3,4,6],[1,2,3,5,6],[1,2,4,5,6],[1,3,4,5,6],[2,3,4,5,6]]
 
 all_vertices = unique(Iterators.flatten(simplices))
 sort!(all_vertices)
@@ -132,10 +132,10 @@ nz = length(z_vars)
 nx = ng + nz
 nh = length(geom_base.connectivity[1]["OrderBulkFaces"])
 
-# println("Constructing symbolic Hessian block...")
-# H_base_block = LorentzianSimplexSolver.EOMsHessian.compute_Hessian_block(S_base, vars)
-println("Precomputing first derivatives...")
-dS_precomp = [SymEngine.diff(S_base, v) for v in vars]
+println("Constructing symbolic Hessian block...")
+H_base_block = LorentzianSimplexSolver.EOMsHessian.compute_Hessian_block(S_base, vars)
+# println("Precomputing first derivatives...")
+# dS_precomp = [SymEngine.diff(S_base, v) for v in vars]
 
 println("Building gamma-independent matrices ...")
 djdl_temp, bulk_edges, j_h_vertices = DJDLUtils.build_djdl_matrix(
@@ -175,8 +175,8 @@ for (ig, gamma_val) in enumerate(gamma_list)
     # ========================================================
     # evaluate Hessian
     println("Evaluating Hessian for gamma = $gamma_val")
-    # HessianOld = LorentzianSimplexSolver.EOMsHessian.evaluate_hessian_ondemand(S_base, vars, sd_base; γ=gamma_val)
-    HessianOld = LorentzianSimplexSolver.EOMsHessian.evaluate_hessian_from_dS(dS_precomp, vars, sd_base; γ=gamma_val)
+    HessianOld = LorentzianSimplexSolver.EOMsHessian.evaluate_hessian_block(H_base_block, sd_base; γ=gamma_val)
+    #HessianOld = LorentzianSimplexSolver.EOMsHessian.evaluate_hessian_from_dS(dS_precomp, vars, sd_base; γ=gamma_val)
 
     djdl_matrix, _, _ = DJDLUtils.build_djdl_matrix(
         geom_base,
