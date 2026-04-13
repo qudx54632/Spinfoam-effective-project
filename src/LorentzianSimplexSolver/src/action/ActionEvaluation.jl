@@ -5,7 +5,6 @@ using DoubleFloats
 
 export build_value_dict, eval_symbolic
 
-@inline symname(x::Basic) = string(x)
 
 # ------------------------------------------------------------
 # Safe conversion to SymEngine.Basic

@@ -6,10 +6,37 @@ using ..PrecisionUtils: get_tolerance
 using ..ActionEvaluation: build_value_dict, eval_symbolic
 
 export compute_EOMs,
-       compute_Hessian,
+       compute_Hessian_block,
+       compute_Hessian_block_half,
        check_EOMs,
-       evaluate_hessian,
-       evaluate_hessian_from_dS
+       evaluate_hessian_block,
+       evaluate_hessian_from_dS,
+       evaluate_hessian_ondemand
+
+# ============================================================
+# helper function to convert SymEngine object to numeric type T
+# ============================================================
+@inline function to_T(x, ::Type{T}) where {T<:Real}
+    # If already a Julia real number
+    if x isa Real
+        return T(x)
+    end
+
+    # Otherwise force string conversion
+    sx = string(x)
+
+    try
+        return parse(T, sx)
+    catch
+        error("Cannot convert to $T: $sx (type = $(typeof(x)))")
+    end
+end
+
+@inline function to_complex_T(val_sym, ::Type{T}) where {T<:Real}
+    re = to_T(real(val_sym), T)
+    im = to_T(imag(val_sym), T)
+    return complex(re, im)
+end
 
 # ============================================================
 # Equations of motion
@@ -29,12 +56,7 @@ end
 # ============================================================
 function compute_Hessian_block(S::Basic, vars)
     n = length(vars)
-    dS = Vector{Basic}(undef, n)
-
-    for i in 1:n
-        dS[i] = SymEngine.diff(S, vars[i])
-    end
-
+    dS = [SymEngine.diff(S, v) for v in vars]
     H = Matrix{Basic}(undef, n, n)
 
     for i in 1:n
@@ -50,9 +72,29 @@ function compute_Hessian_block(S::Basic, vars)
 end
 
 # ============================================================
+# Hessian
+# ============================================================
+function compute_Hessian_block_half(S::Basic, vars)
+    n = length(vars)
+    dS = [SymEngine.diff(S, v) for v in vars]
+    H = Matrix{Basic}(undef, n, n)
+
+    for i in 1:n
+        H[i, i] = SymEngine.diff(dS[i], vars[i])
+        for j in i+1:n
+            hij = SymEngine.diff(dS[i], vars[j])
+            H[i, j] = hij
+            H[j, i] = Basic(0)
+        end
+    end
+
+    return H
+end
+
+# ============================================================
 # Evaluate EOMs numerically
 # ============================================================
-function check_EOMs(dS::Dict{Basic,Basic}, sd::SolveData; γ=1)
+function check_EOMs(dS::Dict{Basic,Basic}, sd::SolveData{T}; γ=1) where {T<:Real}
 
     tol = get_tolerance()
     γsym = symbols("gamma")
@@ -65,8 +107,7 @@ function check_EOMs(dS::Dict{Basic,Basic}, sd::SolveData; γ=1)
         val_sym = eval_symbolic(expr, vals)
 
         # convert to numeric
-        val = complex(Float64(N(real(val_sym))),
-                      Float64(N(imag(val_sym))))
+        val = to_complex_T(val_sym, T)
 
         re_val = abs(real(val))
         im_val = abs(imag(val))
@@ -104,9 +145,7 @@ function evaluate_hessian_block(Hsym::Matrix{Basic},
         for i in 1:j
             val_sym = eval_symbolic(Hsym[i, j], vals)
 
-            re = T(N(real(val_sym)))
-            im = T(N(imag(val_sym)))
-            val = complex(re, im)
+            val = to_complex_T(val_sym, T)
 
             H[i, j] = val
             H[j, i] = val
@@ -138,10 +177,7 @@ function evaluate_hessian_from_dS(
 
             val_sym = eval_symbolic(hij_sym, vals)
 
-            re_part = T(N(real(val_sym)))
-            im_part = T(N(imag(val_sym)))
-
-            val = complex(re_part, im_part)
+            val = to_complex_T(val_sym, T)
 
             H[i, j] = val
             H[j, i] = val
@@ -177,9 +213,7 @@ function evaluate_hessian_ondemand(S::Basic,
             hij_sym = SymEngine.diff(dS[i], vars[j])
             val_sym = eval_symbolic(hij_sym, vals)
 
-            re = T(N(real(val_sym)))
-            im = T(N(imag(val_sym)))
-            val = complex(re, im)
+            val = to_complex_T(val_sym, T)
 
             H[i, j] = val
             H[j, i] = val
