@@ -41,7 +41,7 @@ function get_bulk_edges(geom_base, j_h_vertices)
     ]
     unique_edges_bdry = unique(edges_bdry)
 
-    return setdiff(unique_edges_jh, unique_edges_bdry)
+    return sort(setdiff(unique_edges_jh, unique_edges_bdry))
 end
 
 

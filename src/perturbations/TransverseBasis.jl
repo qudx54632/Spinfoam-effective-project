@@ -30,39 +30,49 @@ function compute_transverse_basis(djdl::Matrix{T}, tol) where {T<:Real}
     nh, nl = size(djdl)
     nt = nh - nl
 
-    # ----------------------------
-    # Build Jacobian J (nh × nl)
-    # ----------------------------
+    # ------------------------------------------------------------
+    # Projector
+    # ------------------------------------------------------------
     J = djdl
-
-    # ----------------------------
-    # Gram matrix G = Jᵀ J (nl × nl)
-    # ----------------------------
     G = transpose(J) * J
-
-    # ----------------------------
-    # Projector P⊥ = I − J (G⁻¹ Jᵀ)
-    # (use linear solve, not inverse)
-    # ----------------------------
     Pperp = Matrix{T}(I, nh, nh) - J * (G \ transpose(J))
 
-    # ----------------------------
-    # Raw projected basis vectors
-    # ----------------------------
-    eRaw = [Pperp[:, i] for i in 1:nh]
+    # ------------------------------------------------------------
+    # Step 1: standard basis
+    # ------------------------------------------------------------
+    stdBasis = [Matrix{T}(I, nh, nh)[:, i] for i in 1:nh]
 
-    # ----------------------------
-    # Select non-zero vectors
-    # ----------------------------
-    eNonZero = [v for v in eRaw if norm(v) > tol]
+    # ------------------------------------------------------------
+    # Step 2: eRaw = Pperp * basis vectors
+    # ------------------------------------------------------------
+    eRaw = [Pperp * v for v in stdBasis]
 
-    @assert length(eNonZero) ≥ nt "Not enough transverse directions found"
+    # ------------------------------------------------------------
+    # Step 3: Orthogonalize (Mathematica style)
+    # ------------------------------------------------------------
+    eListRaw = Vector{Vector{T}}()
 
-    # ----------------------------
-    # Orthonormalize
-    # ----------------------------
-    E = hcat(eNonZero[1:nt]...)
-    eListHT = qr(E).Q[:, 1:nt]
+    for v in eRaw
+        w = copy(v)
+
+        for u in eListRaw
+            w -= (dot(u, w)) * u
+        end
+
+        if norm(w) > tol
+            push!(eListRaw, w / norm(w))
+        end
+    end
+
+    # ------------------------------------------------------------
+    # Step 4: Select Norm > 0.5
+    # ------------------------------------------------------------
+    eList = [v for v in eListRaw if norm(v) > 0.5]
+
+    # ------------------------------------------------------------
+    # Step 5: Transpose
+    # ------------------------------------------------------------
+    eListHT = hcat(eList...)   # (nh × nt)
 
     return eListHT
 end
