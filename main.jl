@@ -68,8 +68,10 @@ coords_lines = [
 ]
 
 #const ScalarT = Float64
+using DoubleFloats
+const ScalarT = Double64
 # tol = 1e-10;
-const ScalarT = BigFloat
+#const ScalarT = BigFloat
 const tol = parse(ScalarT, "1e-8")
 
 if ScalarT === BigFloat
@@ -128,7 +130,7 @@ HessianOld = H_base_eval
 @variables dl[1:nl]
 dl_vec = collect(dl) 
 dYsoln, HYY = LinearizedEOMs.solve_linearized_eoms(HessianOld, eListHT, djdl_matrix, nx, ScalarT, dl_vec)
-invHessianXX = inv(HessianOld[1:nx, 1:nx])[1:ng, 1:ng]
+in_valsvHessianXX = inv(HessianOld[1:nx, 1:nx])[1:ng, 1:ng]
 
 Wmatrix = -dlogEh_dg_vals * invHessianXX * transpose(dlogEh_dg_vals)
 

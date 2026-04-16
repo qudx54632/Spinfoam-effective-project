@@ -30,7 +30,8 @@ using .QuadraticRegge
 # ------------------------------------------------------------
 # Define the precision and tolerance for numerical operations
 # ------------------------------------------------------------
-#const ScalarT = Double64
+# using DoubleFloats
+# const ScalarT = Double64
 const ScalarT = Float64
 #const ScalarT = BigFloat
 const tol = ScalarT(1e-8)
