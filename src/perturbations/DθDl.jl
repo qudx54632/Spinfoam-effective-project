@@ -1,8 +1,9 @@
-module QuadraticRegge
+module DθDl_module
 
 using Symbolics
 using Combinatorics
 using LinearAlgebra
+using LorentzianSimplexSolver
 
 export compute_dθDl
 
@@ -102,11 +103,10 @@ end
 # -------------------------------------------------
 # index bookkeeping
 # -------------------------------------------------
-
 function build_face_indices(simplex_vertices,
                             face_vertices,
                             tets_in_simplex,
-                            bulk_edges)
+                            perturb_edges)
 
     tets = [tet for tet in tets_in_simplex
             if all(v -> v in tet, face_vertices)]
@@ -120,7 +120,7 @@ function build_face_indices(simplex_vertices,
 
     h_edge_indices = [
         findfirst(e -> e == sort(be), edges_simplex)
-        for be in bulk_edges
+        for be in perturb_edges
     ]
 
     return (; edges_simplex, edges_face, edges_tets, hbar_idx, h_edge_indices)
@@ -129,68 +129,71 @@ end
 # -------------------------------------------------
 # main driver
 # -------------------------------------------------
-
 function compute_dθDl(
     simplices,
-    j_h_vertices,
-    bulk_edges,
+    η_vertices,
+    perturb_edges,
     vertex_coords,
-    tets_per_simplex,
-    minkowski_norm2, ::Type{T}
+    tets_per_simplex, ::Type{T}
 ) where {T<:Real}
 
-    nh = length(j_h_vertices)
-    nb = length(bulk_edges)
+    nh = length(η_vertices)
+    nb = length(perturb_edges)
 
     DθDl = zeros(Complex{T}, nh, nb)
     
     @variables lsq[1:nb]
     lsq_vec = collect(lsq)
 
-    lh_vals = Dict(
-        lsq_vec[i] => minkowski_norm2(vertex_coords[e[1]] - vertex_coords[e[2]])
-        for (i, e) in enumerate(bulk_edges))
+    ls_vals = Dict(
+        lsq_vec[i] => LorentzianSimplexSolver.Dihedral.minkowski_norm2(vertex_coords[e[1]] - vertex_coords[e[2]])
+        for (i, e) in enumerate(perturb_edges))
+
 
     for h in 1:nh, i in eachindex(simplices)
 
-        if !all(v -> v in simplices[i], j_h_vertices[h])
+        if !all(v -> v in simplices[i], η_vertices[h])
             continue
         end
 
         idx = build_face_indices(
             simplices[i],
-            j_h_vertices[h],
+            η_vertices[h],
             tets_per_simplex[i],
-            bulk_edges
+            perturb_edges
         )
 
+        if all(isnothing, idx.h_edge_indices)
+            continue
+        end
+        
         ls_simplex = [
-            (k in idx.h_edge_indices) ? lsq_vec[findfirst(x->x==e, bulk_edges)] :
-            minkowski_norm2(vertex_coords[e[1]] - vertex_coords[e[2]])
+            (k in idx.h_edge_indices) ? lsq_vec[findfirst(x->x==e, perturb_edges)] :
+            LorentzianSimplexSolver.Dihedral.minkowski_norm2(vertex_coords[e[1]] - vertex_coords[e[2]])
             for (k,e) in enumerate(idx.edges_simplex)
         ]
-
+        
         ls_tetA = [
-            (e in bulk_edges) ? lsq_vec[findfirst(x->x==e, bulk_edges)] :
-            minkowski_norm2(vertex_coords[e[1]] - vertex_coords[e[2]])
+            (e in perturb_edges) ? lsq_vec[findfirst(x->x==e, perturb_edges)] :
+            LorentzianSimplexSolver.Dihedral.minkowski_norm2(vertex_coords[e[1]] - vertex_coords[e[2]])
             for e in idx.edges_tets[1]
         ]
 
 
         ls_tetB = [
-            (e in bulk_edges) ? lsq_vec[findfirst(x->x==e, bulk_edges)] :
-            minkowski_norm2(vertex_coords[e[1]] - vertex_coords[e[2]])
+            (e in perturb_edges) ? lsq_vec[findfirst(x->x==e, perturb_edges)] :
+            LorentzianSimplexSolver.Dihedral.minkowski_norm2(vertex_coords[e[1]] - vertex_coords[e[2]])
             for e in idx.edges_tets[2]
         ]
 
         ls_face = [
-            (e in bulk_edges) ? lsq_vec[findfirst(x->x==e, bulk_edges)] :
-            minkowski_norm2(vertex_coords[e[1]] - vertex_coords[e[2]])
+            (e in perturb_edges) ? lsq_vec[findfirst(x->x==e, perturb_edges)] :
+            LorentzianSimplexSolver.Dihedral.minkowski_norm2(vertex_coords[e[1]] - vertex_coords[e[2]])
             for e in idx.edges_face
         ]
 
         for b in 1:nb
-            DθDl[h,b] += dθdl_single_pp(ls_simplex, ls_tetA, ls_tetB, ls_face, idx.hbar_idx, lsq_vec[b], lh_vals, T)
+            DθDl[h,b] += dθdl_single_pp(ls_simplex, ls_tetA, ls_tetB, ls_face, idx.hbar_idx, lsq_vec[b], ls_vals, T)
         end
     end
 

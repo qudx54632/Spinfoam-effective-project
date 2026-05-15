@@ -11,8 +11,8 @@ Compute a basis of vectors transverse to the Regge submanifold.
 
 Input
 -----
-djdl :: Vector{Vector{T}}
-    djdl[h][ℓ] = ∂ j_h / ∂ ℓ_ℓ
+dηdl :: Vector{Vector{T}}
+    dηdl[h][ℓ] = ∂ η_h / ∂ ℓ_ℓ
 
 Keyword
 -------
@@ -25,15 +25,13 @@ eList      :: Vector{Vector{T}}   # transverse basis vectors (length nh)
 eListHT    :: Matrix{T}            # transpose: nt × nh
 Pperp      :: Matrix{T}            # projector
 """
-function compute_transverse_basis(djdl::Matrix{T}, tol) where {T<:Real}
+function compute_transverse_basis(dηdl::Matrix{T}, tol) where {T<:Real}
 
-    nh, nl = size(djdl)
-    nt = nh - nl
-
+    nh, nl = size(dηdl)
     # ------------------------------------------------------------
     # Projector
     # ------------------------------------------------------------
-    J = djdl
+    J = dηdl
     G = transpose(J) * J
     Pperp = Matrix{T}(I, nh, nh) - J * (G \ transpose(J))
 

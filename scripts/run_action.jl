@@ -4,19 +4,16 @@ export run_action
 
 using LorentzianSimplexSolver
 
-function run_action(geom_base, γ)
+function run_action(geom, dihedral_angles, γ)
     # ------------------------------------------------------------
     # 6. Symbols and action (reference orientation)
     # ------------------------------------------------------------
-    LorentzianSimplexSolver.DefineSymbols.run_define_variables(geom_base)
+    LorentzianSimplexSolver.DefineSymbols.run_define_variables(geom)
 
-    sd_base, _ =
-        LorentzianSimplexSolver.SolveVars.run_solver(geom_base)
+    sd, _ = LorentzianSimplexSolver.SolveVars.run_solver(geom);
+    S_no_phase, phase_soln = LorentzianSimplexSolver.SFaction_no_phase.compute_action_no_bdry_phase(geom, sd, dihedral_angles; γ=γ);
 
-    S_base =
-        LorentzianSimplexSolver.DefineAction.compute_action(geom_base)
-
-    return sd_base, S_base
+    return sd, S_no_phase, phase_soln
 end
 
 end # module RunAction

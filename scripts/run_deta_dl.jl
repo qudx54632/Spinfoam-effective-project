@@ -1,6 +1,6 @@
-module DJDLUtils
+module DηDLUtils
 
-export build_djdl_matrix
+export build_dηdl_matrix
 
 using LorentzianSimplexSolver
 
@@ -9,39 +9,41 @@ using LorentzianSimplexSolver
 # ------------------------------------------------------------
 
 function get_bulk_faces_vertices(geom_base)
-    j_h_all = geom_base.connectivity[1]["OrderBulkFaces"]
+    η_h_all = geom_base.connectivity[1]["OrderBulkFaces"]
 
     return [
         geom_base.connectivity[1]["TetFaces"][v[1][1]][v[1][2]][v[1][3]]
-        for v in j_h_all
+        for v in η_h_all
     ]
 end
 
 
-function get_bulk_edges(geom_base, j_h_vertices)
+function get_bulk_edges(geom_base, η_h_vertices)
     # edges from bulk faces
-    edges_jh = [
+    edges_ηh = [
         sort([v[i], v[j]])
-        for v in j_h_vertices
+        for v in η_h_vertices
         for (i, j) in ((1,2), (1,3), (2,3))
     ]
-    unique_edges_jh = unique(edges_jh)
+    unique_edges_ηh = unique(edges_ηh)
 
     # boundary faces
-    j_b_all = geom_base.connectivity[1]["OrderBDryFaces"]
-    j_b_vertices = [
+    η_b_all = geom_base.connectivity[1]["OrderBDryFaces"]
+    η_b_vertices = [
         geom_base.connectivity[1]["TetFaces"][v[1][1]][v[1][2]][v[1][3]]
-        for v in j_b_all
+        for v in η_b_all
     ]
 
     edges_bdry = [
         sort([v[i], v[j]])
-        for v in j_b_vertices
+        for v in η_b_vertices
         for (i, j) in ((1,2), (1,3), (2,3))
     ]
     unique_edges_bdry = unique(edges_bdry)
 
-    return sort(setdiff(unique_edges_jh, unique_edges_bdry))
+    unique_edges_bulk = sort(setdiff(unique_edges_ηh, unique_edges_bdry))
+
+    return unique_edges_bulk, unique_edges_bdry
 end
 
 
@@ -70,9 +72,9 @@ end
 end
 
 
-@inline function djdl(l1, l2, l3, γ)
+@inline function dηdl(l1, l2, l3, γ)
     Δval = Δ(l1, l2, l3)
-    pref = 1 / (2 * γ * sqrt(Δval))
+    pref = 1 / (γ * sqrt(Δval))
 
     return pref .* [
         l1*(l2^2 + l3^2 - l1^2),
@@ -107,37 +109,32 @@ end
 # 5. Main driver
 # ------------------------------------------------------------
 
-function build_djdl_matrix(
-    geom_base,
+function build_dηdl_matrix(
+    η_h_vertices, perturb_edges, 
     vertex_coords,
     ScalarT::Type{<:Real},
     gamma_vals
 )
-
-    # faces and edges
-    j_h_vertices = get_bulk_faces_vertices(geom_base)
-    bulk_edges   = get_bulk_edges(geom_base, j_h_vertices)
-
-    nh = length(j_h_vertices)
-    nb = length(bulk_edges)
+    nh = length(η_h_vertices)
+    nb = length(perturb_edges)
 
     # lengths
-    j_h_length = compute_face_edge_lengths(j_h_vertices, vertex_coords)
+    η_h_length = compute_face_edge_lengths(η_h_vertices, vertex_coords)
 
-    djdl_matrix = zeros(ScalarT, nh, nb)
+    dηdl_matrix = zeros(ScalarT, nh, nb)
 
     for h in 1:nh
         for b in 1:nb
-            pos = edge_position(j_h_vertices[h], bulk_edges[b])
+            pos = edge_position(η_h_vertices[h], perturb_edges[b])
             pos == 0 && continue
 
-            lens = j_h_length[h]
-            djdl_matrix[h, b] =
-                djdl(lens[1], lens[2], lens[3], gamma_vals)[pos]
+            lens = η_h_length[h]
+            dηdl_matrix[h, b] =
+                dηdl(lens[1], lens[2], lens[3], gamma_vals)[pos]
         end
     end
 
-    return djdl_matrix, bulk_edges, j_h_vertices
+    return dηdl_matrix
 end
 
 end # module
