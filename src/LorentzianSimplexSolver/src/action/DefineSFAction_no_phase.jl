@@ -47,7 +47,7 @@ end
 function solve_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderBDryFaces, vals, dihedral_angles)
 
     Eb_phase_list = boundary_Eb_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderBDryFaces; γ=1)
-    @show "error1"
+    
     phase_solution = Dict{Basic,Basic}()
     I = _I[]
 

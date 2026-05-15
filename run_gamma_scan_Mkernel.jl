@@ -169,7 +169,7 @@ for (ig, gamma_val) in enumerate(gamma_list)
     
     # Compute kernel matrix M_kernel
     println("  - Computing M_kernel...")
-    eta_h_vals = [ScalarT(subs(eta_h[i], vals)) for i in 1:nh]
+    eta_h_vals = [Double64(parse(BigFloat, string(N(subs(eta_h[i], vals))))) for i in 1:nh]
     Ahh = Matrix(Diagonal(eta_h_vals))
     hαβ = H_eval[1:nX, 1:nX] + transpose(dlogEh_dX_vals) * Ahh * dlogEh_dX_vals
     invHessianXX = inv(H_eval[1:nX, 1:nX]);

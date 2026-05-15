@@ -194,6 +194,8 @@ println(det(Hxx))
 dηdl_matrix = DηDLUtils.build_dηdl_matrix(η_h_vertices, perturb_edges, vertex_coords, ScalarT, gamma_val)
 eListHT = TransverseBasis.compute_transverse_basis(dηdl_matrix, tol)
 
+dkbdl, d2kb_dldl = Soln_dY_dX.dkb_dl(geom, nl, bdry_edges_perturb, vertex_coords ;γ=gamma_val);
+
 dlogEh_dX_vals = RunDlogEhDX.evaluate_dlogEh_dX(dlogEh_dX_sym, geom, sd; γval=gamma_val)
 dlogEb_dX_vals, dlogEb_dY_vals = RunDlogEhDX.evaluate_dlogEb_dXY(dlogEb_dX_sym, dlogEb_dY_sym, Y_vars, geom, sd, phase_soln; γval=gamma_val)
 dkbEb_dX_vals, dkbEb_dY_vals, d2kbEb_dXdY_vals, d2kbEb_dYdY_vals = RunDlogEhDX.evaluate_kblogEb_all(dkbEb_dX_sym, dkbEb_dY_sym, d2kbEb_dXdY_sym, d2kbEb_dYdY_sym, geom, sd, Y_vars, phase_soln; γval=gamma_val)
@@ -240,7 +242,7 @@ DYDl = vcat(dkbdl, DξDl)
 SF_linear_bdry = transpose(dkbEb_dY_vals_sumb) * DYDl
 
 Cα = d2kbEb_dXdY_vals_sumb * DYDl
-BA = vcat(Bα + Cα, zeros(nt, 2))
+BA = vcat(Bα + Cα, zeros(nt, nl))
 Hαi = transpose(dlogEh_dX_vals) * eListHT
 HIJ = [hαβ Hαi; transpose(Hαi) zeros(nt, nt)]
 invHIJ = inv(HIJ)
