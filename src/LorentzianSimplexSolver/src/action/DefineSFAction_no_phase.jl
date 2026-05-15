@@ -2,11 +2,14 @@ module SFaction_no_phase
 
 using LinearAlgebra
 using SymEngine
+using DoubleFloats: Double64
 using ..DefineAction: _I, symone, Eehss, EebssSource, EebssTarget, γsym, compute_action
 using ..DefineSymbols: make_symbol
 using ..ActionEvaluation: eval_symbolic, build_value_dict
 
 export compute_action_no_bdry_phase
+
+@inline val_basic(x) = x isa Double64 ? Basic(string(x)) : Basic(x)
 
 function boundary_Eb_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderBDryFaces; γ=γsym())
 
@@ -44,6 +47,7 @@ end
 function solve_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderBDryFaces, vals, dihedral_angles)
 
     Eb_phase_list = boundary_Eb_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderBDryFaces; γ=1)
+    @show "error1"
     phase_solution = Dict{Basic,Basic}()
     I = _I[]
 
@@ -51,10 +55,9 @@ function solve_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderB
         
         (k, i, j) = OrderBDryFaces[face_index][1]
         phase_sym = make_symbol("Phi$(k)_$(i)_$(j)")   
-        
         Eb_phase_list1_val = eval_symbolic(Eb_phase_list[face_index], vals)
         Eb_phase_list1_simp = subs(SymEngine.expand(Eb_phase_list1_val), phase_sym => 0)
-        rhs = dihedral_angles[face_index] * I /2
+        rhs = val_basic(real(dihedral_angles[face_index])) * I / val_basic(2)
         phase_expr = -log(exp(rhs) / Eb_phase_list1_simp) / I
         phase_solution[phase_sym] = phase_expr
     end
@@ -69,9 +72,8 @@ function compute_action_no_bdry_phase(geom, sd, dihedral_angles; γ=γsym())
     kappaMat      = [geom.simplex[i].kappa for i in 1:length(geom.simplex)]
     OrderBDryFaces = geom.connectivity[1]["OrderBDryFaces"]
 
-    vals = build_value_dict(sd, γsym(); γval=1);
+    vals = build_value_dict(sd, γsym(); γval=1)
     phase_soln = solve_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderBDryFaces, vals, dihedral_angles)
-
 
     for face_idx in eachindex(OrderBDryFaces)
         (k, i, j) = OrderBDryFaces[face_idx][1]
