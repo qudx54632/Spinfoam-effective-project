@@ -182,8 +182,8 @@ function run_Regge_action(geom, simplices, vertex_coords)
     end
     areas_bdry = [geom.simplex[faces[1][1]].areas[faces[1][2]][faces[1][3]] for faces in geom.connectivity[1]["OrderBDryFaces"]]
 
-    Regge_action = sum(areas_bulk[i] * deficit_angles[i] for i in 1:length(deficit_angles)) +
-                    sum(areas_bdry[i] * dihedral_angles[i] for i in 1:length(dihedral_angles))  
+    Regge_action = sum(areas_bulk[i] * deficit_angles[i] for i in eachindex(deficit_angles)) +
+                    sum(areas_bdry[i] * dihedral_angles[i] for i in eachindex(dihedral_angles))  
 
     return deficit_angles, dihedral_angles, areas_bulk, areas_bdry, im * Regge_action
 end

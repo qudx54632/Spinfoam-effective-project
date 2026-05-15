@@ -2,8 +2,11 @@ module Soln_dY_dX
 
 using LinearAlgebra, SymEngine
 using LorentzianSimplexSolver
+using DoubleFloats
 
 export solve_δY_δX
+
+@inline val_basic(x) = Basic(string(x))
 
 # ------------------------------------------------------------
 # Cayley–Menger matrix for triangle (2-simplex)
@@ -56,7 +59,7 @@ function dkb_dl(geom, nl_perturb, bdry_edges_perturb, vertices; γ=γsym())
             end
             return lb_sym^2
         else
-            return SymEngine.Basic(LorentzianSimplexSolver.Volume.distance_sq(vertices[i], vertices[j]))
+            return val_basic(LorentzianSimplexSolver.Volume.distance_sq(vertices[i], vertices[j]))
         end
     end
 
@@ -89,13 +92,25 @@ function dkb_dl(geom, nl_perturb, bdry_edges_perturb, vertices; γ=γsym())
             sym_u = edge_symbols[uu]
             # first derivative
             d1 = SymEngine.diff(tri_area_sq[k], sym_u)
-            dkb_dl[k, u] = subs(d1, subs_dict) * 2 / γ
+
+            if typeof(vertices[1][1]) == Double64
+                dkb_dl[k, u] = Double64(parse(BigFloat, string(N(subs(d1, subs_dict))))) * val_basic(2) / γ
+            else
+                dkb_dl[k, u] = subs(d1, subs_dict) * 2 / γ
+            end
+            
             # second derivative wrt every j
             for jj in 1:npert
                 j = nl_perturb - npert + jj
                 sym_j = edge_symbols[jj]
                 d2 = SymEngine.diff(SymEngine.diff(tri_area_sq[k], sym_u), sym_j)
-                d2kb_dldl[k, u, j] = subs(d2, subs_dict) * 2 / γ
+                
+                if typeof(vertices[1][1]) == Double64
+                    dkb_dl[k, u] = Double64(parse(BigFloat, string(N(subs(d2, subs_dict))))) * val_basic(2) / γ
+                else
+                     d2kb_dldl[k, u, j] = subs(d2, subs_dict) * 2 / γ
+                end
+               
             end
             # bulk directions remain zero
             for j in 1:(nl_perturb - npert)
