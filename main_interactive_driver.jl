@@ -255,10 +255,6 @@ display(SF_action)
 H_eval = LorentzianSimplexSolver.EOMsHessian.evaluate_hessian_block(H_symbols, sd; γ=gamma_val)
 Hxx = H_eval[1:nX, 1:nX]
 
-println()
-println("det(Hxx) = ")
-println(det(Hxx))
-
 dηdl_matrix = DηDLUtils.build_dηdl_matrix(η_h_vertices, perturb_edges, vertex_coords, ScalarT, gamma_val)
 eListHT = TransverseBasis.compute_transverse_basis(dηdl_matrix, tol)
 
@@ -337,7 +333,7 @@ DXDl = -invHessianXX * (
     d2kbEb_dXdY_vals_sumb[:, nb+1:end] * DξDl
 )
 
-kb_vals = [ScalarT(subs(eta_h[i], vals)) for i in 1:nh]
+kb_vals = [ScalarT(subs(Y_vars[i], vals)) for i in 1:nb];
 Mm = [kb_vals[b] * dlogEb_dY_vals[b, j] for b in 1:nb, j in nb+1:length(Y_vars)]
 
 R = [

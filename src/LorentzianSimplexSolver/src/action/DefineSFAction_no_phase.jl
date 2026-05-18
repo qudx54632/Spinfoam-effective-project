@@ -44,9 +44,9 @@ function boundary_Eb_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, 
     return Eb_phase_list
 end
 
-function solve_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderBDryFaces, vals, dihedral_angles)
+function solve_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderBDryFaces, vals, dihedral_angles; γ=γsym())
 
-    Eb_phase_list = boundary_Eb_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderBDryFaces; γ=1)
+    Eb_phase_list = boundary_Eb_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderBDryFaces; γ)
     
     phase_solution = Dict{Basic,Basic}()
     I = _I[]
@@ -57,8 +57,8 @@ function solve_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderB
         phase_sym = make_symbol("Phi$(k)_$(i)_$(j)")   
         Eb_phase_list1_val = eval_symbolic(Eb_phase_list[face_index], vals)
         Eb_phase_list1_simp = subs(SymEngine.expand(Eb_phase_list1_val), phase_sym => 0)
-        rhs = val_basic(real(dihedral_angles[face_index])) * I / val_basic(2)
-        phase_expr = -log(exp(rhs) / Eb_phase_list1_simp) / I
+        rhs = val_basic(real(dihedral_angles[face_index])) * I * γ/ val_basic(2)
+        phase_expr = (log(Eb_phase_list1_simp) - rhs) / I
         phase_solution[phase_sym] = phase_expr
     end
 
@@ -72,8 +72,8 @@ function compute_action_no_bdry_phase(geom, sd, dihedral_angles; γ=γsym())
     kappaMat      = [geom.simplex[i].kappa for i in 1:length(geom.simplex)]
     OrderBDryFaces = geom.connectivity[1]["OrderBDryFaces"]
 
-    vals = build_value_dict(sd, γsym(); γval=1)
-    phase_soln = solve_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderBDryFaces, vals, dihedral_angles)
+    vals = build_value_dict(sd, γsym())
+    phase_soln = solve_phase(gvariablesall, zvariablesall, zetabdryall, kappaMat, OrderBDryFaces, vals, dihedral_angles; γ=γ)
 
     for face_idx in eachindex(OrderBDryFaces)
         (k, i, j) = OrderBDryFaces[face_idx][1]

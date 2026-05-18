@@ -191,10 +191,10 @@ function evaluate_dlogEb_dXY(dlogEb_dX_sym, dlogEb_dY_sym, Y_vars,
                                geom, sd::LorentzianSimplexSolver.SolveVars.SolveData{T}, phase_soln;
                                γval=nothing) where {T<:Real}
 
-    γsym = LorentzianSimplexSolver.DefineAction.γsym()
+    γ = LorentzianSimplexSolver.DefineAction.γsym()
 
     vals = LorentzianSimplexSolver.ActionEvaluation.build_value_dict(
-        sd, γsym; γval=γval
+        sd, γ; γval=γval
     )
 
     X_vars = vcat(vec(geom.varias[:g_var]), vec(geom.varias[:z_var]))
@@ -210,12 +210,14 @@ function evaluate_dlogEb_dXY(dlogEb_dX_sym, dlogEb_dY_sym, Y_vars,
         for (i, v) in enumerate(X_vars)
             val_sym = LorentzianSimplexSolver.ActionEvaluation.eval_symbolic(dlogEb_dX_sym[h][v], vals)
             val_sym = LorentzianSimplexSolver.ActionEvaluation.eval_symbolic(val_sym, phase_soln);
+            val_sym = subs(val_sym, γ=>γval)
             dlogEb_dX_vals[h, i] = Complex{T}(T(N(real(val_sym))), T(N(imag(val_sym))))
         end
 
         for (i, v) in enumerate(Y_vars)
             val_sym = LorentzianSimplexSolver.ActionEvaluation.eval_symbolic(dlogEb_dY_sym[h][v], vals)
-            val_sym = LorentzianSimplexSolver.ActionEvaluation.eval_symbolic(val_sym, phase_soln);
+            val_sym = LorentzianSimplexSolver.ActionEvaluation.eval_symbolic(val_sym, phase_soln)
+            val_sym = subs(val_sym, γ=>γval)
             dlogEb_dY_vals[h, i] = Complex{T}(T(N(real(val_sym))), T(N(imag(val_sym))))
         end
 
@@ -344,10 +346,10 @@ function evaluate_kblogEb_all(
     γval=nothing
 ) where {T<:Real}
 
-    γsym_ = LorentzianSimplexSolver.DefineAction.γsym()
+    γ = LorentzianSimplexSolver.DefineAction.γsym()
 
     vals = LorentzianSimplexSolver.ActionEvaluation.build_value_dict(
-        sd, γsym_; γval=γval
+        sd, γ; γval=γval
     )
 
     # --------------------------------------------------
@@ -379,6 +381,7 @@ function evaluate_kblogEb_all(
             val_sym = LorentzianSimplexSolver.ActionEvaluation.eval_symbolic(
                 val_sym, phase_soln
             )
+            val_sym = subs(val_sym, γ=>γval)
             dkbEb_dX_vals[h, i] = Complex{T}(T(N(real(val_sym))), T(N(imag(val_sym))))
         end
 
@@ -390,6 +393,7 @@ function evaluate_kblogEb_all(
             val_sym = LorentzianSimplexSolver.ActionEvaluation.eval_symbolic(
                 val_sym, phase_soln
             )
+            val_sym = subs(val_sym, γ=>γval)
             dkbEb_dY_vals[h, i] = Complex{T}(T(N(real(val_sym))), T(N(imag(val_sym))))
         end
 
@@ -401,6 +405,7 @@ function evaluate_kblogEb_all(
                 val_sym = LorentzianSimplexSolver.ActionEvaluation.eval_symbolic(
                     val_sym, phase_soln
                 )
+                val_sym = subs(val_sym, γ=>γval)
                 d2kbEb_dXdY_vals[h, ix, iy] = Complex{T}(T(N(real(val_sym))), T(N(imag(val_sym))))
             end
         end
@@ -413,6 +418,7 @@ function evaluate_kblogEb_all(
                 val_sym = LorentzianSimplexSolver.ActionEvaluation.eval_symbolic(
                     val_sym, phase_soln
                 )
+                val_sym = subs(val_sym, γ=>γval)
                 d2kbEb_dYdY_vals[h, iy1, iy2] = Complex{T}(T(N(real(val_sym))), T(N(imag(val_sym))))
             end
         end
