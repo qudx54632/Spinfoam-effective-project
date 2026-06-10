@@ -1,182 +1,61 @@
-# Spinfoam Effective Project
+# Effective Spinfoam
 
-This repository contains numerical tools for studying **effective and perturbative dynamics in Lorentzian spinfoam models**, including the quadratic Regge action, linearized equations of motion, and transverse spin fluctuations.
+This repository contains Julia scripts for the numerical evaluation of the higher-order correction to the effective spinfoam action. It builds on `LorentzianSimplexSolver` for Lorentzian geometry reconstruction, Regge data, critical spinfoam action data, equations of motion, and Hessian blocks.
 
-The project is organized as a lightweight Julia codebase, with a **Jupyter notebook (main.ipynb) serving as the main driver** for running calculations and exploring results.
+The paper-level workflow is:
 
----
+```julia
+using Pkg
+Pkg.activate("../LorentzianSimplexSolver")
 
-## Repository structure
+using LorentzianSimplexSolver
+include("src/EffectiveSpinfoamWorkflow.jl")
+using .EffectiveSpinfoamWorkflow
 
-- src/  
-  Core library code  
-  - perturbations/  
-    Effective and perturbative dynamics  
-    - QuadraticRegge.jl  
-    - LinearizedEOMs.jl  
-    - TransverseBasis.jl  
-  - hessian/  
-    Hessian construction and related code  
-  - LorentzianSimplexSolver/  
-    Lorentzian simplex and spinfoam solvers  
+configure_precision!(Float64)
 
-- scripts/  
-  Standalone Julia scripts for batch runs  
-  - run_geometry.jl  
-  - run_action.jl  
-  - run_djdl.jl  
-  - run_dlogEh_dg.jl  
+vertex_coords = build_vertex_coordinates(simplices, coords_lines, Float64)
+data = build_effective_data(simplices, vertex_coords)
+result = compute_effective_terms(data, 0.1)
 
-- data/  
-  Precomputed numerical data  
+M = result.M_kernel
+correction = result.non_regge_correction
+quadratic_action = result.spinfoam_quadratic
+```
 
-- main.ipynb  
-  Main entry point (Jupyter notebook)  
+`build_effective_data` performs the gamma-independent construction: geometry, face matching, Regge action, critical Spinfoam action, Hessian symbols, deficit-angle derivatives, and perturbation data. `compute_effective_terms` evaluates the Hessian, the correction matrix `M_kernel`, and the three terms used in the paper: `linear_regge`, `quadratic_regge`, and `non_regge_correction`.
 
-- Manifest.toml  
-  Julia environment lock file  
+## Dependency Layout
 
-- .CondaPkg/  
-  Local Conda environment (not required)  
+This project uses the sibling package:
 
----
+```text
+../LorentzianSimplexSolver
+```
 
-## Requirements
+The scripts activate this package environment directly. The older embedded copy under `src/LorentzianSimplexSolver/` is kept only for reference and should not be used by the current drivers.
 
-- Julia 1.9 or newer (recommended)
-- Jupyter Notebook
-- IJulia
+## Main Files
 
-All Julia dependencies are specified in Manifest.toml.
+- `main_interactive_driver.jl`: interactive single-gamma calculation.
+- `run_gamma_scan_Mkernel.jl`: batch scan of the kernel over a list of gamma values.
+- `src/EffectiveSpinfoamWorkflow.jl`: compact workflow for computing `M_kernel`, the Regge terms, and the non-Regge correction.
+- `src/perturbations/`: perturbation utilities used by the workflow.
+- `scripts/`: lower-level symbolic derivative helpers.
+- `results/`: saved kernel scans and figures.
 
----
+## Running
 
-## Installation
+From this directory:
 
-Clone the repository:
+```bash
+julia main_interactive_driver.jl
+```
 
-    git clone https://github.com/qudx54632/Spinfoam-effective-project.git  
-    cd Spinfoam-effective-project
+or for a gamma scan:
 
-(Optional) install the Jupyter kernel:
+```bash
+julia run_gamma_scan_Mkernel.jl
+```
 
-    using IJulia  
-    notebook()
-
----
-
-## Dependencies
-
-This project relies on the **LorentzianSimplexSolver** package for Lorentzian
-simplex geometry and spinfoam-related computations. A local copy of the package
-is included under `src/LorentzianSimplexSolver/` for convenience and
-reproducibility.
-
----
-
-## Running the calculations (recommended)
-
-The main workflow is via the Jupyter notebook.
-
-Start Jupyter and open the notebook:
-
-jupyter notebook main.ipynb
-
-Inside `main.ipynb`, the project environment is activated and all core
-modules are loaded from the `src/` directory.
-
-The notebook performs the following tasks:
-
-- sets up the geometry and boundary data  
-- constructs the effective (quadratic) action  
-- computes linearized equations of motion and transverse modes  
-- performs numerical evaluation and visualization  
-
----
-
-## Scripts
-
-The `scripts/` directory contains standalone Julia scripts for specific
-tasks or batch-style runs, such as:
-
-- geometry setup  
-- action evaluation  
-- Jacobian and Hessian-related computations  
-
-These scripts are not required to run `main.ipynb`, but may be useful
-for automation, testing, or debugging.
-
-Example usage:
-
-    julia --project scripts/run_action.jl
-
----
-
-## Data
-
-The `data/` directory contains **precomputed Hessian matrices** for
-specific Pachner moves and triangulations, including:
-
-- the **1–5 Pachner move**  
-- the **Double–Delta–3 configuration**  
-
-Each data file corresponds to a specific choice of vertices, simplices,
-and triangulation orientation.
-
-**Important:**  
-When using or extending these datasets, the data file name should be
-updated to explicitly reflect the corresponding vertices and simplices,
-to avoid ambiguity and to ensure consistency with the geometry used in
-the calculation.
-
----
-
-## Hessian computation (optional)
-
-The `src/hessian/` directory contains the file `run_hessian.jl`, which is
-used to compute Hessian matrices for different triangulation configurations.
-
-To generate Hessian data for a new configuration, modify the following
-items in `run_hessian.jl`:
-
-- the definition of the **simplices**
-- the definition of **coords_lines**
-- the output file name in  
-  `@save joinpath(pwd(), "data/<new_name>.jld2") H_base_eval`
-
-The output file name should be chosen to clearly reflect the corresponding
-vertices and simplices.
-
-After making these changes, run the Hessian computation in Julia as follows:
-
-Start Julia in the project root directory.
-
-Add the Lorentzian simplex solver to the load path:
-
-    push!(LOAD_PATH, joinpath(pwd(), "src/LorentzianSimplexSolver", "src"))
-
-Load the solver and execute the Hessian script:
-
-    using LorentzianSimplexSolver
-    include("src/hessian/run_hessian.jl")
-
-Once the script finishes, the computed Hessian matrix will be automatically
-saved in the `data/` directory.
-
----
-
-## Status
-
-This repository is under active development.
-
-The current structure is intended to support future extensions to:
-
-- higher-order effective actions  
-- refined triangulations  
-- cosmological and black-hole spinfoam models  
-
----
-
-## License
-
-To be specified.
+The scan script periodically saves `gamma_list` and `M_kernel_matrix_list` to the selected `.jld2` file.

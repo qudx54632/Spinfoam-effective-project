@@ -33,7 +33,7 @@ function compute_transverse_basis(dηdl::Matrix{T}, tol) where {T<:Real}
     # ------------------------------------------------------------
     J = dηdl
     G = transpose(J) * J
-    Pperp = Matrix{T}(I, nh, nh) - J * (G \ transpose(J))
+    Pperp = Matrix{T}(I, nh, nh) - J * pinv(G; atol=tol, rtol=tol) * transpose(J)
 
     # ------------------------------------------------------------
     # Step 1: standard basis
