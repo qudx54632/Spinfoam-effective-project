@@ -6,7 +6,7 @@ The paper-level workflow is:
 
 ```julia
 using Pkg
-Pkg.activate("../LorentzianSimplexSolver")
+Pkg.activate("src/LorentzianSimplexSolver")
 
 using LorentzianSimplexSolver
 include("src/EffectiveSpinfoamWorkflow.jl")
@@ -27,13 +27,13 @@ quadratic_action = result.spinfoam_quadratic
 
 ## Dependency Layout
 
-This project uses the sibling package:
+This project includes the Lorentzian geometry package under:
 
 ```text
-../LorentzianSimplexSolver
+src/LorentzianSimplexSolver
 ```
 
-The scripts activate this package environment directly. The older embedded copy under `src/LorentzianSimplexSolver/` is kept only for reference and should not be used by the current drivers.
+The scripts activate this package environment directly, so a separate download of `LorentzianSimplexSolver` is not required.
 
 ## Main Files
 

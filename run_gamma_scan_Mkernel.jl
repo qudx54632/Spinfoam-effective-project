@@ -2,7 +2,7 @@
 
 using Pkg
 
-const SOLVER_PROJECT = normpath(joinpath(@__DIR__, "..", "LorentzianSimplexSolver"))
+const SOLVER_PROJECT = normpath(joinpath(@__DIR__, "src", "LorentzianSimplexSolver"))
 isdir(SOLVER_PROJECT) || error("LorentzianSimplexSolver project not found at $SOLVER_PROJECT")
 Pkg.activate(SOLVER_PROJECT; io=devnull)
 
