@@ -2,7 +2,7 @@
 
 using Pkg
 
-const SOLVER_PROJECT = normpath(joinpath(@__DIR__, "src", "LorentzianSimplexSolver"))
+const SOLVER_PROJECT = normpath(joinpath(@__DIR__, "..", "LorentzianSimplexSolver"))
 isdir(SOLVER_PROJECT) || error("LorentzianSimplexSolver project not found at $SOLVER_PROJECT")
 Pkg.activate(SOLVER_PROJECT; io=devnull)
 
@@ -12,15 +12,14 @@ using LorentzianSimplexSolver
 using JLD2
 
 include(joinpath(@__DIR__, "src", "EffectiveSpinfoamWorkflow.jl"))
-using .EffectiveSpinfoamWorkflow
 
 const ScalarT = Float64
 const tol = ScalarT(1e-8)
 
-configure_precision!(ScalarT; precision=64, tolerance=tol)
+LorentzianSimplexSolver.configure_precision!(ScalarT; precision=64, tolerance=tol)
 
 gamma_list = ScalarT(10.0) .^ range(ScalarT(-6), ScalarT(0), length=50)
-outfile = joinpath(@__DIR__, "results", "gamma_scan_15move1.jld2")
+outfile = joinpath(@__DIR__, "results", "gamma_scan_15move.jld2")
 mkpath(dirname(outfile))
 
 simplices = [[1,2,3,4,6],[1,2,3,5,6],[1,2,4,5,6],[1,3,4,5,6],[2,3,4,5,6]]
@@ -34,10 +33,17 @@ coords_lines = [
     "-0.068,-0.27,-0.5,-1.3",
 ]
 
-vertex_coords = build_vertex_coordinates(simplices, coords_lines, ScalarT)
+vertex_coords = EffectiveSpinfoamWorkflow.build_vertex_coordinates(
+    simplices,
+    coords_lines,
+    ScalarT,
+)
 
 println("[1/2] Building gamma-independent effective setup.")
-data = build_effective_data(simplices, vertex_coords)
+data = EffectiveSpinfoamWorkflow.build_effective_data(
+    simplices,
+    vertex_coords,
+)
 
 println("[2/2] Scanning $(length(gamma_list)) gamma values.")
 M_kernel_matrix_list = Any[nothing for _ in gamma_list]
@@ -46,7 +52,11 @@ scaled_M_kernel_norm_list = Union{Nothing, ScalarT}[nothing for _ in gamma_list]
 
 for (i, gamma_value) in enumerate(gamma_list)
     println("[$i/$(length(gamma_list))] gamma = $gamma_value")
-    terms = compute_effective_terms(data, gamma_value; tolerance=tol)
+    terms = EffectiveSpinfoamWorkflow.compute_effective_terms(
+        data,
+        gamma_value;
+        tolerance=tol,
+    )
 
     M_kernel_matrix_list[i] = terms.M_kernel
     M_kernel_norm_list[i] = opnorm(terms.M_kernel)
